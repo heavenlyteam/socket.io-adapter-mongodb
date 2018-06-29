@@ -102,22 +102,25 @@ function adapter(uri, opts) {
   Mongo.prototype.onmessage = function (msg) {
     if (uid == msg.uid || !msg.uid) return debug('ignore same uid');
 
-    var args = msgpack.decode(msg.data.buffer);
+    try {
+      var args = msgpack.decode(msg.data.buffer);
+      for (let key in args[0]) {
+        args[0][key.toLowerCase()] = args[0][key]
+      }
 
-    for (let key in args[0]) {
-      args[0][key.toLowerCase()] = args[0][key]
+      for (let key in args[1]) {
+        args[1][key.toLowerCase()] = args[1][key]
+      }
+
+      if (args[0] && args[0].nsp === undefined)
+        args[0].nsp = '/';
+
+      if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace');
+      args.push(true);
+      this.broadcast.apply(this, args);
+    } catch (ex) {
+      console.log('MSG pack decode packet error', ex);
     }
-
-    for (let key in args[1]) {
-      args[1][key.toLowerCase()] = args[1][key]
-    }
-
-    if (args[0] && args[0].nsp === undefined)
-      args[0].nsp = '/';
-
-    if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace');
-    args.push(true);
-    this.broadcast.apply(this, args);
   };
 
   /**
